@@ -26,5 +26,9 @@ git --version
 ## Run the Project
 
 ```bash
-docker-compose up
+build using:
+dockebuild -t math-wizard .
+
+to run:
+run --rm -p 5000:5000 -e FLASK_APP=app.app:app math-wizard
 ```
