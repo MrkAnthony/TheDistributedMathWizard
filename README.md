@@ -1,7 +1,3 @@
-Here is the updated README. It maintains your original style and structure while incorporating the new directory organization and the specific run command you requested.
-
----
-
 # The Distributed Math Wizard
 
 A high-availability load balancing project that teaches web infrastructure and traffic management fundamentals.
@@ -44,21 +40,5 @@ docker build -t math-wizard .
 
 # Run the container
 docker run --rm -p 5000:5000 -e FLASK_APP=app.app:app math-wizard
-
-```
-
-# Rayhan's run
-
-```bash
-docker build -t math-wizard .
-docker run --rm -p 5000:5000 -e FLASK_APP=app.app:app math-wizard
-
-```
-
-# Nicole's run
-
-```bash
-docker build -t math-wizard .
-docker run --rm -p 5000:5000 -e FLASK_APP=app/app.py math-wizard
 
 ```
