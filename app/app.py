@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 from app.controllers.identity_controller import identity_handler
 from app.controllers.math_controller import add_handler
 
@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def hello_world():
-    return 'Hello World!'
+    return render_template('index.html')
 
 @app.route('/whoami')
 def awareness():
