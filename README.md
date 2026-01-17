@@ -4,15 +4,23 @@ A high-availability load balancing project that teaches web infrastructure and t
 
 ## What It Does
 
-A simple "Identity Adder" where the user provides two numbers via URL (e.g., `?num1=10&num2=5`). The system returns the sum and displays the unique ID and color-coded name of the server that performed the calculation.
+A simple "Identity Adder" where the user provides two numbers via URL (e.g., `add?a=10&b=5`). The system returns the sum and displays the unique ID of the server that performed the calculation.
 
-Example output: `Sum: 15 | Processed by: Wizard-Blue (ID: a1b2c3)`
+**Example output:** `{"sum": 15, "handled_by": "a1b2c3d4e5f6"}`
+
+## Project Structure
+
+The project is organized into a modular **Controller-Service** architecture:
+
+* **`app/controllers/`**: Handlers that manage the request/response cycle.
+* **`app/services/`**: The "brain" of the app containing math and identity logic.
+* **`app/app.py`**: The main entry point that connects routes to handlers.
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- Python 3.x
-- Git
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+* Python 3.x
+* Git
 
 ## Verify Installation
 
@@ -21,14 +29,16 @@ docker --version
 docker-compose --version
 python --version
 git --version
+
 ```
 
 ## Run the Project
 
 ```bash
-build using:
-dockebuild -t math-wizard .
+# Build the image
+docker build -t math-wizard .
 
-to run:
-run --rm -p 5000:5000 -e FLASK_APP=app.app:app math-wizard
+# Run the container
+docker run --rm -p 5000:5000 -e FLASK_APP=app.app:app math-wizard
+
 ```

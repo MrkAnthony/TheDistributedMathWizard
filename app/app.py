@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify
-from app.self_awareness import get_container_info
-from app.adder_identity import add_with_identity
+from flask import Flask
+from app.controllers.identity_controller import identity_handler
+from app.controllers.math_controller import add_handler
 
 app = Flask(__name__)
 
@@ -10,14 +10,12 @@ def hello_world():
 
 @app.route('/whoami')
 def awareness():
-    return jsonify(get_container_info())
+    return identity_handler()
 
+# Route delegates to the controller
 @app.route('/add')
 def add():
-    a = request.args.get('a', type=float)
-    b = request.args.get('b', type=float)
+    return add_handler()
 
-    if a is None or b is None:
-        return {"error": "missing parameters"}, 400
-
-    return jsonify(add_with_identity(a, b))
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
