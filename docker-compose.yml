@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # The Nginx Gateway (The only one visible to the host)
+  nginx_gateway:
+    image: nginx:alpine
+    container_name: nginx_proxy
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - math_wizard
+
+  # The Flask Worker (Hidden from the host)
+  math_wizard:
+    build: .
+    container_name: math_wizard
+    environment:
+      - FLASK_APP=app/app.py
+    # EXPOSE tells other containers the port, but doesn't open it to your WSL
+    expose:
+      - "5000"

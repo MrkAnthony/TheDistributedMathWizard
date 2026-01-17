@@ -9,7 +9,6 @@ def add_handler():
     if a is None or b is None:
         return jsonify({"error": "Missing params"}), 400
         
-    # The name here clearly indicates a service operation is occurring
     calc_res = add_two_items(a, b)
     identity = get_container_info()
 
