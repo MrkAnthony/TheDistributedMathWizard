@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wizard UI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <style>
+        /* Small custom tweaks to center the wizard box */
+        body { padding-top: 50px; }
+        .wizard-container { max-width: 500px; margin: 0 auto; }
+        .input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+        #display { border-top: 1px solid #444; padding-top: 15px; margin-top: 15px; }
+        .server-badge { font-size: 0.8rem; color: #888; }
+    </style>
+</head>
+<body>
+    <main class="container wizard-container">
+        <article>
+            <header>
+                <strong>Distributed Math Wizard 🧙</strong>
+            </header>
+            
+            <div class="input-group">
+                <input type="number" id="a" placeholder="a" aria-label="Number A">
+                <span>+</span>
+                <input type="number" id="b" placeholder="b" aria-label="Number B">
+            </div>
+            
+            <button onclick="doMath()">Calculate Sum</button>
+
+            <footer id="display">
+                <div><strong>Result:</strong> <span id="res">-</span></div>
+                <div class="server-badge">
+                    <strong>Server ID:</strong> <code id="sid">waiting...</code>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <script>
+        function doMath() {
+            const a = document.getElementById('a').value;
+            const b = document.getElementById('b').value;
+            const btn = document.querySelector('button');
+            
+            // Visual feedback
+            btn.setAttribute('aria-busy', 'true');
+            btn.disabled = true;
+
+            fetch(`/add?a=${a}&b=${b}`)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.error) {
+                        alert(data.error);
+                    } else {
+                        document.getElementById('res').innerText = data.sum;
+                        document.getElementById('sid').innerText = data.handled_by;
+                    }
+                })
+                .catch(err => alert("Connection error"))
+                .finally(() => {
+                    btn.setAttribute('aria-busy', 'false');
+                    btn.disabled = false;
+                });
+        }
+    </script>
+</body>
+</html>

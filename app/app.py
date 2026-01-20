@@ -1,10 +1,16 @@
+<<<<<<< HEAD
 from flask import Flask, request
 import socket
+=======
+from flask import Flask, render_template
+from app.controllers.identity_controller import identity_handler
+from app.controllers.math_controller import add_handler
+>>>>>>> origin/master
 
 app = Flask(__name__)
 
-
 @app.route('/')
+<<<<<<< HEAD
 def hello_world():  # put application's code here
     return '''
     <h2>Math Wizard</h2>
@@ -34,7 +40,24 @@ def add():
     hostname = socket.gethostname()
 
     return f'Sum: {result} | Server: {hostname}'
+=======
+def hello_world():
+    return render_template('index.html')
+>>>>>>> origin/master
 
+@app.route('/whoami')
+def awareness():
+    return identity_handler()
 
+<<<<<<< HEAD
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+=======
+# Route delegates to the controller
+@app.route('/add')
+def add():
+    return add_handler()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+>>>>>>> origin/master
