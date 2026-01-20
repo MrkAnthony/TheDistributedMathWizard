@@ -12,12 +12,24 @@ services:
     depends_on:
       - math_wizard
 
+  # Shared State Store (Valkey)
+  valkey:
+    image: valkey/valkey:latest
+    container_name: valkey
+    restart: unless-stopped
+    expose:
+      - "6379"
+
   # The Flask Worker (Hidden from the host)
   math_wizard:
     build: .
     container_name: math_wizard
     environment:
       - FLASK_APP=app/app.py
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+    depends_on:
+      - valkey
     # EXPOSE tells other containers the port, but doesn't open it to your WSL
     expose:
       - "5000"
