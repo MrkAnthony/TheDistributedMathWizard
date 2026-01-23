@@ -1,63 +1,46 @@
-# 🧙‍♂️ The Distributed Math Wizard
-
-A high-availability load balancing project designed to demonstrate web infrastructure, traffic management, and secure proxying.
-
-## What It Does
-
-The Math Wizard provides a simple web interface and API to perform addition. While the math is simple, the infrastructure is robust:
-
-* **Web UI**: A clean, minimalist frontend built with Pico.css.
-* **Reverse Proxy**: Nginx acts as the entry point, hiding the Flask worker from the public internet.
-* **Identity Tracking**: Each response includes the unique ID of the specific container that processed the request.
-
-**Example JSON output:** `{"sum": 15, "handled_by": "a1b2c3d4e5f6"}`
+Here is the comprehensive summary of our progress today. You can copy and paste this into a new session to provide all the necessary context:
 
 ---
 
-## Project Structure
+**Context: Distributed Math Wizard Project Handover**
 
-The project follows a modular **Controller-Service** pattern to separate web logic from business logic:
+**1. Project Architecture**
 
-* **`nginx/`**: Nginx configuration for proxying and security.
-* **`app/templates/`**: HTML files for the client-facing UI.
-* **`app/controllers/`**: Request handlers that manage the API lifecycle.
-* **`app/services/`**: The core logic for math and system identity.
-* **`app/app.py`**: The Flask application entry point.
+* **Nginx Gateway**: Reverse proxy on port `80` (load balances to `math_wizard`).
+* **Flask Workers (`math_wizard`)**: Internal API service on port `5000`.
+* **Valkey**: Distributed state store on port `6379` (used for cross-node state).
+* **Frontend**: Single-page reactive UI using **Alpine.js** and **Pico.css**.
 
----
+**2. Current API Routes (Implemented)**
 
-## Prerequisites
+* `GET /`: Serves the UI.
+* `GET /add?a=x&b=y`: Synchronous addition. Returns `{"sum": 3, "handled_by": "node_id"}`.
+* `GET /whoami`: Returns container/node identity metadata.
+* `GET /valkey_test`: Diagnostic route to verify Flask-to-Valkey connectivity.
 
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-* Python 3.11+ (for local development)
-* WSL2 (if on Windows)
+**3. Future State Design (Asynchronous Polling)**
+The goal is to move to a non-blocking job pattern using Valkey:
 
----
+1. `POST /calculate`: Submit numbers. Returns a `job_id`.
+2. `GET /status/{job_id}`: Polls Valkey for status (`PENDING`, `PROCESSING`, `COMPLETED`).
+3. `GET /result/{job_id}`: Fetches the final sum once completed.
 
-## How to Run
+**4. Frontend Status (index.html)**
+We have built a reactive UI that:
 
-The entire stack is managed via **Docker Compose**.
+* Uses `Alpine.js` to manage state (`isLoading`, `result`, `logs`).
+* Currently calls `/add` for immediate results.
+* Includes an `infrastructure test` panel for node identity and Valkey health.
+* Has a `usePolling` toggle and pre-written logic to switch to the async pattern once the backend routes are developed.
+* Features a real-time "Cluster Events" debug console.
 
-```bash
-# Build and start the infrastructure
-docker-compose up --build
+**5. Infrastructure Configs**
 
-# Run in the background
-docker-compose up -d --build
+* **Nginx**: Uses an `upstream` block targeting the service name `math_wizard:5000`.
+* **Docker Compose**: Set up to scale workers (e.g., `docker-compose up --scale math_wizard=3`).
+* **Environment**: Flask uses `VALKEY_HOST=valkey` and `VALKEY_PORT=6379`.
 
-# Stop the project and clean up old containers
-docker-compose down --remove-orphans
-
-```
-
-Access the wizard at: **`http://localhost`**
-
----
-
-## Testing the Layers
-
-1. **UI/Proxy Test**: Visit `http://localhost` in your browser.
-2. **API Test**: `curl "http://localhost/add?a=10&b=5"`.
-3. **Security Check**: `curl "http://localhost:5000"` (This should be blocked/inaccessible, proving the worker is hidden).
+**6. Latest Frontend Code Structure**
+The UI uses the `Alpine.data` pattern wrapped in an `alpine:init` listener to ensure the DOM is ready and variables are scoped correctly, preventing "Uncaught ReferenceErrors."
 
 ---
