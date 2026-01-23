@@ -23,7 +23,6 @@ services:
   # The Flask Worker (Hidden from the host)
   math_wizard:
     build: .
-    container_name: math_wizard
     environment:
       - FLASK_APP=app/app.py
       - VALKEY_HOST=valkey
@@ -33,3 +32,5 @@ services:
     # EXPOSE tells other containers the port, but doesn't open it to your WSL
     expose:
       - "5000"
+    deploy:
+      replicas: 3
