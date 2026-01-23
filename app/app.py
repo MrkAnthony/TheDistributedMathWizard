@@ -3,6 +3,8 @@ from app.controllers.identity_controller import identity_handler
 from app.controllers.math_controller import add_handler
 from app.services.identity_service import get_container_info
 from app.services.exceptions import MathWizardError
+from app.controllers.valkey_controller import valkey_test_handler
+
 
 app = Flask(__name__)
 
@@ -40,6 +42,11 @@ def awareness():
 @app.route('/add')
 def add():
     return add_handler()
+
+@app.route('/valkey_test')
+def valkey_test():
+    return valkey_test_handler()
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
