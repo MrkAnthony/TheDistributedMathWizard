@@ -1,12 +1,14 @@
 from flask import Flask, render_template, jsonify
 from app.controllers.identity_controller import identity_handler
 from app.controllers.math_controller import add_handler
+from app.controllers.task_controller import create_task_handler, check_status_handler
 from app.services.identity_service import get_container_info
 from app.services.exceptions import MathWizardError
 from app.controllers.valkey_controller import valkey_test_handler
 
 
 app = Flask(__name__)
+
 
 @app.errorhandler(MathWizardError)
 def handle_mathwizard_error(err: MathWizardError):
@@ -15,12 +17,14 @@ def handle_mathwizard_error(err: MathWizardError):
         "handled_by": get_container_info()
     }), err.status_code
 
+
 @app.errorhandler(404)
 def handle_not_found(err):
     return jsonify({
         "error": "Route not found",
         "handled_by": get_container_info()
     }), 404
+
 
 @app.errorhandler(Exception)
 def handle_unexpected_error(err):
@@ -34,15 +38,26 @@ def handle_unexpected_error(err):
 def hello_world():
     return render_template('index.html')
 
+
 @app.route('/whoami')
 def awareness():
     return identity_handler()
+
 
 # Route delegates to the controller
 @app.route('/add')
 def add():
     return add_handler()
 
+
+@app.route('/tasks/<task_id>/status', methods=['GET'])
+def check_status(task_id):
+    return check_status_handler(task_id)
+
+
+@app.route('/task', methods=['POST'])
+def create_task():
+    return create_task_handler()
 @app.route('/valkey_test')
 def valkey_test():
     return valkey_test_handler()
