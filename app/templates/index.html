@@ -3,67 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Wizard UI</title>
+    <title>Wizard UI - Simple</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <style>
-        /* Small custom tweaks to center the wizard box */
-        body { padding-top: 50px; }
+        body { padding-top: 50px; background-color: #11191f; }
         .wizard-container { max-width: 500px; margin: 0 auto; }
         .input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
         #display { border-top: 1px solid #444; padding-top: 15px; margin-top: 15px; }
-        .server-badge { font-size: 0.8rem; color: #888; }
+        .server-badge { font-size: 0.8rem; color: #888; display: flex; justify-content: space-between; align-items: center; }
+        [x-cloak] { display: none !important; }
+        .debug-console { 
+            background: #000; color: #0f0; font-family: monospace; 
+            font-size: 0.7rem; padding: 10px; border-radius: 8px; margin-top: 1rem;
+            max-height: 150px; overflow-y: auto; border: 1px solid #333;
+        }
     </style>
 </head>
-<body>
+<body x-data="{
+    a: null, b: null, result: null, serverId: 'detecting...',
+    isLoading: false, statusMessage: '', errorMessage: '', 
+    logs: [], checkingIdentity: false, testingValkey: false,
+
+    addLog(msg, isError = false) {
+        this.logs.unshift({ time: new Date().toLocaleTimeString(), msg, isError });
+        if (this.logs.length > 5) this.logs.pop();
+    },
+
+    async startCalculation() {
+        this.result = null; this.errorMessage = ''; this.isLoading = true;
+        this.statusMessage = 'Contacting Flask...';
+        try {
+            const res = await fetch(`/add?a=${this.a}&b=${this.b}`);
+            const data = await res.json();
+            if (!res.ok || data.error) throw new Error(data.error || 'Error');
+            this.result = data.sum;
+            this.serverId = data.handled_by || data.container_id || 'Unknown';
+            this.addLog('Sum calculated: ' + this.result);
+        } catch (err) {
+            this.errorMessage = err.message;
+            this.addLog('Error: ' + err.message, true);
+        } finally {
+            this.isLoading = false;
+        }
+    },
+
+    async checkIdentity() {
+        this.checkingIdentity = true;
+        try {
+            const res = await fetch('/whoami');
+            const data = await res.json();
+            this.serverId = data.container_id || data.handled_by || 'Unknown';
+            this.addLog('Node: ' + this.serverId);
+        } catch (e) { this.addLog('ID check failed', true); }
+        finally { this.checkingIdentity = false; }
+    },
+
+    async testValkey() {
+        this.testingValkey = true;
+        try {
+            const res = await fetch('/valkey_test');
+            const data = await res.json();
+            this.addLog('Valkey: ' + (data.status || 'OK'));
+        } catch (e) { this.addLog('Valkey failed', true); }
+        finally { this.testingValkey = false; }
+    }
+}" x-init="addLog('System Ready')">
+
     <main class="container wizard-container">
         <article>
-            <header>
-                <strong>Distributed Math Wizard 🧙</strong>
-            </header>
+            <header><strong>Distributed Math Wizard 🧙</strong></header>
             
             <div class="input-group">
-                <input type="number" id="a" placeholder="a" aria-label="Number A">
+                <input type="number" x-model.number="a" placeholder="a">
                 <span>+</span>
-                <input type="number" id="b" placeholder="b" aria-label="Number B">
+                <input type="number" x-model.number="b" placeholder="b">
             </div>
             
-            <button onclick="doMath()">Calculate Sum</button>
+            <button @click="startCalculation()" :aria-busy="isLoading" :disabled="isLoading || a === null || b === null">
+                Calculate Sum
+            </button>
 
             <footer id="display">
-                <div><strong>Result:</strong> <span id="res">-</span></div>
+                <div x-show="result !== null" x-cloak>
+                    <strong>Result:</strong> <span x-text="result" style="font-size: 1.5rem; color: #4caf50;"></span>
+                </div>
                 <div class="server-badge">
-                    <strong>Server ID:</strong> <code id="sid">waiting...</code>
+                    <span><strong>Node:</strong> <code x-text="serverId"></code></span>
                 </div>
             </footer>
+
+            <p x-show="errorMessage" x-cloak><mark x-text="errorMessage"></mark></p>
         </article>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="outline secondary" @click="checkIdentity()" :aria-busy="checkingIdentity">Whoami</button>
+            <button class="outline secondary" @click="testValkey()" :aria-busy="testingValkey">Valkey</button>
+        </div>
+
+        <div class="debug-console" x-show="logs.length > 0" x-cloak>
+            <template x-for="log in logs">
+                <div><small x-text="log.time" style="color:#555"></small> <span :style="log.isError ? 'color:red' : ''" x-text="log.msg"></span></div>
+            </template>
+        </div>
     </main>
 
-    <script>
-        function doMath() {
-            const a = document.getElementById('a').value;
-            const b = document.getElementById('b').value;
-            const btn = document.querySelector('button');
-            
-            // Visual feedback
-            btn.setAttribute('aria-busy', 'true');
-            btn.disabled = true;
-
-            fetch(`/add?a=${a}&b=${b}`)
-                .then(response => response.json())
-                .then(data => {
-                    if(data.error) {
-                        alert(data.error);
-                    } else {
-                        document.getElementById('res').innerText = data.sum;
-                        document.getElementById('sid').innerText = data.handled_by;
-                    }
-                })
-                .catch(err => alert("Connection error"))
-                .finally(() => {
-                    btn.setAttribute('aria-busy', 'false');
-                    btn.disabled = false;
-                });
-        }
-    </script>
+    <!-- Moving Alpine to the end of body and adding defer to fix the initialization warning -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>

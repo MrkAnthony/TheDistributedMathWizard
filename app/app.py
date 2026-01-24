@@ -4,6 +4,8 @@ from app.controllers.math_controller import add_handler
 from app.controllers.task_controller import create_task_handler, check_status_handler
 from app.services.identity_service import get_container_info
 from app.services.exceptions import MathWizardError
+from app.controllers.valkey_controller import valkey_test_handler
+
 
 app = Flask(__name__)
 
@@ -56,6 +58,9 @@ def check_status(task_id):
 @app.route('/task', methods=['POST'])
 def create_task():
     return create_task_handler()
+@app.route('/valkey_test')
+def valkey_test():
+    return valkey_test_handler()
 
 
 if __name__ == "__main__":
