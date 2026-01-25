@@ -12,11 +12,11 @@ task_store = {}
 
 
 def run_task_in_background(task_id, operation, a, b) -> None:
-    status = "complete"  # Assume that it will be successful
     result = None
     try:
         service_function = SERVICE_MAP.get(operation)
         result = service_function(a, b)
+        status = "complete"
     except Exception as e:
         status = 'failed'
         result = str(e)
