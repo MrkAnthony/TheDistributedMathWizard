@@ -1,46 +1,75 @@
-Here is the comprehensive summary of our progress today. You can copy and paste this into a new session to provide all the necessary context:
+# 🧙 Distributed Math Wizard
+
+A distributed system simulation demonstrating the evolution from synchronous API calls to asynchronous, polling-based architectures.
+
+## 🚀 Running the Project
+
+To build the containers and start the entire cluster, run:
+
+```bash
+docker compose up --build
+
+```
+
+* **Access the UI:** [http://localhost](https://www.google.com/search?q=http://localhost)
+* **Stop the cluster:** Press `Ctrl+C` or run `docker compose down`
+
+> **Note:** Use `--build` whenever you modify the Python code to ensure the containers update with your latest changes.
 
 ---
 
-**Context: Distributed Math Wizard Project Handover**
+## 🏗 Current Architecture (Hybrid Phase)
 
-**1. Project Architecture**
+The system currently mimics a microservices environment using a single Flask application with background threading:
 
-* **Nginx Gateway**: Reverse proxy on port `80` (load balances to `math_wizard`).
-* **Flask Workers (`math_wizard`)**: Internal API service on port `5000`.
-* **Valkey**: Distributed state store on port `6379` (used for cross-node state).
-* **Frontend**: Single-page reactive UI using **Alpine.js** and **Pico.css**.
+* **Gateway:** Nginx (Reverse Proxy on port `80`).
+* **Application:** Flask (Python) handling API requests on port `5000`.
+* **Background Workers:** Python `threading` module (Simulating distributed worker nodes).
+* **State Store:** In-Memory Python Dictionary (Volatile storage).
+* **Frontend:** Alpine.js + Pico.css (Reactive UI with polling logic).
 
-**2. Current API Routes (Implemented)**
+### Identity Tracking (The 3-Step Lifecycle)
 
-* `GET /`: Serves the UI.
-* `GET /add?a=x&b=y`: Synchronous addition. Returns `{"sum": 3, "handled_by": "node_id"}`.
-* `GET /whoami`: Returns container/node identity metadata.
-* `GET /valkey_test`: Diagnostic route to verify Flask-to-Valkey connectivity.
+The system now tracks the Container ID for every stage of the request lifecycle:
 
-**3. Future State Design (Asynchronous Polling)**
-The goal is to move to a non-blocking job pattern using Valkey:
-
-1. `POST /calculate`: Submit numbers. Returns a `job_id`.
-2. `GET /status/{job_id}`: Polls Valkey for status (`PENDING`, `PROCESSING`, `COMPLETED`).
-3. `GET /result/{job_id}`: Fetches the final sum once completed.
-
-**4. Frontend Status (index.html)**
-We have built a reactive UI that:
-
-* Uses `Alpine.js` to manage state (`isLoading`, `result`, `logs`).
-* Currently calls `/add` for immediate results.
-* Includes an `infrastructure test` panel for node identity and Valkey health.
-* Has a `usePolling` toggle and pre-written logic to switch to the async pattern once the backend routes are developed.
-* Features a real-time "Cluster Events" debug console.
-
-**5. Infrastructure Configs**
-
-* **Nginx**: Uses an `upstream` block targeting the service name `math_wizard:5000`.
-* **Docker Compose**: Set up to scale workers (e.g., `docker-compose up --scale math_wizard=3`).
-* **Environment**: Flask uses `VALKEY_HOST=valkey` and `VALKEY_PORT=6379`.
-
-**6. Latest Frontend Code Structure**
-The UI uses the `Alpine.data` pattern wrapped in an `alpine:init` listener to ensure the DOM is ready and variables are scoped correctly, preventing "Uncaught ReferenceErrors."
+1. **Initiated By:** The API node that accepted the `POST` request.
+2. **Last Checked By:** The API node that served the status update (`checked_by`).
+3. **Processed By:** The Worker node that actually performed the calculation (`handled_by`).
 
 ---
+
+## 🛠 API Endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/` | Serves the UI dashboard. |
+| `GET` | `/whoami` | Returns the current container ID. |
+| `GET` | `/add` | **Sync:** Performs calculation immediately (blocking). |
+| `POST` | `/task` | **Async:** Queues a background task. Returns `task_id`. |
+| `GET` | `/tasks/<id>/status` | **Async:** Returns status, `checked_by` (API ID), and `handled_by` (Worker ID, if complete). |
+| `GET` | `/valkey_test` | Diagnostics for distributed store connectivity. |
+
+---
+
+## 🔮 Future State (Valkey Integration)
+
+The next phase of this project moves from "Simulation" to "Production Architecture" by introducing **Valkey** (a Redis fork) as the central nervous system.
+
+### How it will work:
+
+1. **Decoupling:** The API will no longer spawn threads. Instead, it will act as a **Producer**.
+2. **The Queue:** When `/task` is called, the API will push a JSON job payload into a Valkey List (e.g., `lpush tasks_queue`).
+3. **The Workers:** A separate fleet of Worker Containers (running a `worker.py` script) will act as **Consumers**. They will block-pop (`brpop`) items from Valkey.
+4. **Persistence:** Task status and results will be stored in Valkey Keys (e.g., `SET task:123 ...`) instead of a local Python dictionary. This allows the API to restart without losing task history.
+5. **Scalability:** We will be able to scale the API nodes and Worker nodes independently.
+
+### To Be Implemented
+
+* [ ] **Valkey Producer:** Update `task_service.py` to push jobs to Valkey instead of starting a Thread.
+* [ ] **Valkey Consumer:** Create a dedicated `worker.py` entry point that listens to the Valkey queue.
+* [ ] **State Persistence:** Update `get_task_status` to query Valkey for results instead of the local memory.
+* [ ] **Docker Compose Update:** Define the standalone `worker` service in `docker-compose.yml` to run multiple instances.
+
+```
+
+```

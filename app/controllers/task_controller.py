@@ -1,4 +1,5 @@
 from app.services.task_service import start_task, get_task_status
+from app.services.identity_service import get_container_info
 from flask import jsonify, request
 
 
@@ -9,15 +10,30 @@ def create_task_handler():
 
     task_id = start_task(a, b, operation)
 
-    return jsonify({"task_id": task_id}), 202
+    return jsonify({
+        "task_id": task_id,
+        "handled_by": get_container_info()
+    }), 202
 
 
 def check_status_handler(task_id):
-    task_status = get_task_status(task_id)
+    task_data = get_task_status(task_id)
+    status = task_data["status"]
+    
+    response = {
+        "status": status,
+        "checked_by": get_container_info()
+    }
 
-    if task_status["status"] == "complete":
-        return jsonify({"status": "complete", "result": task_status["result"]}), 200
-    elif task_status["status"] == "failed":
-        return jsonify({"status": "failed", "error": task_status["result"]}), 200
+    if status == "complete":
+        response["result"] = task_data["result"]
+        response["handled_by"] = task_data.get("handled_by", "Unknown")
+        return jsonify(response), 200
+        
+    elif status == "failed":
+        response["error"] = task_data["result"]
+        response["handled_by"] = task_data.get("handled_by", "Unknown")
+        return jsonify(response), 200
+        
     else:
-        return jsonify({"status": "pending"}), 200
+        return jsonify(response), 200

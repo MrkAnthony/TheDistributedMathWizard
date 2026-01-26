@@ -3,111 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Wizard UI - Simple</title>
+    <title>Math Wizard Controller</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    
     <style>
-        body { padding-top: 50px; background-color: #11191f; }
-        .wizard-container { max-width: 500px; margin: 0 auto; }
-        .input-group { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-        #display { border-top: 1px solid #444; padding-top: 15px; margin-top: 15px; }
-        .server-badge { font-size: 0.8rem; color: #888; display: flex; justify-content: space-between; align-items: center; }
+        body { padding: 2rem; background-color: #11191f; }
+        .container { max-width: 600px; }
+        .result-box { 
+            padding: 1rem; border-radius: 8px; margin-top: 1rem; 
+            border: 1px solid #333; background: #1a2632; 
+        }
+        .info-row {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #333; padding: 8px 0; font-size: 0.9rem;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #888; }
+        .node-id { font-family: monospace; color: #4caf50; }
+        
+        .status-badge {
+            font-weight: bold; padding: 2px 8px; border-radius: 4px;
+            background: #333; color: #fff;
+        }
         [x-cloak] { display: none !important; }
-        .debug-console { 
-            background: #000; color: #0f0; font-family: monospace; 
-            font-size: 0.7rem; padding: 10px; border-radius: 8px; margin-top: 1rem;
-            max-height: 150px; overflow-y: auto; border: 1px solid #333;
-        }
     </style>
-</head>
-<body x-data="{
-    a: null, b: null, result: null, serverId: 'detecting...',
-    isLoading: false, statusMessage: '', errorMessage: '', 
-    logs: [], checkingIdentity: false, testingValkey: false,
 
-    addLog(msg, isError = false) {
-        this.logs.unshift({ time: new Date().toLocaleTimeString(), msg, isError });
-        if (this.logs.length > 5) this.logs.pop();
-    },
+    <script>
+        function wizardApp() {
+            return {
+                a: null, b: null,
+                processing: false,
+                status: 'IDLE', 
+                result: null,
+                error: '',
+                message: false, 
 
-    async startCalculation() {
-        this.result = null; this.errorMessage = ''; this.isLoading = true;
-        this.statusMessage = 'Contacting Flask...';
-        try {
-            const res = await fetch(`/add?a=${this.a}&b=${this.b}`);
-            const data = await res.json();
-            if (!res.ok || data.error) throw new Error(data.error || 'Error');
-            this.result = data.sum;
-            this.serverId = data.handled_by || data.container_id || 'Unknown';
-            this.addLog('Sum calculated: ' + this.result);
-        } catch (err) {
-            this.errorMessage = err.message;
-            this.addLog('Error: ' + err.message, true);
-        } finally {
-            this.isLoading = false;
+                // Tracking Identities
+                startedBy: '---',    // Who accepted the request
+                checkedBy: '---',    // Who we polled last
+                processedBy: '---',  // Who actually did the math
+
+                get inputsValid() { return this.a !== null && this.b !== null; },
+
+                resetUI() {
+                    this.result = null; 
+                    this.error = ''; 
+                    this.message = true; 
+                    this.processing = true;
+                    
+                    // Reset Identities
+                    this.startedBy = '---';
+                    this.checkedBy = '---';
+                    this.processedBy = 'Waiting...';
+                },
+
+                // 1. DIRECT SYNC ROUTE
+                async directAdd() {
+                    this.resetUI();
+                    this.status = 'Fetching...';
+                    
+                    try {
+                        console.log(`[UI] Starting Direct Add: a=${this.a}, b=${this.b}`);
+                        
+                        const res = await fetch(`/add?a=${this.a}&b=${this.b}`);
+                        const data = await res.json();
+                        
+                        console.log('[API] /add Response:', data);
+
+                        this.result = data.sum;
+                        this.status = 'complete';
+                        
+                        // In sync mode, one node does everything
+                        const nodeId = data.handled_by || 'Unknown';
+                        this.startedBy = nodeId;
+                        this.checkedBy = nodeId;
+                        this.processedBy = nodeId;
+
+                    } catch (e) {
+                        console.error('[API] /add Failed:', e);
+                        this.error = "Request Failed";
+                        this.status = 'failed';
+                    } finally {
+                        this.processing = false;
+                    }
+                },
+
+                // 2. ASYNC POLLING ROUTE
+                async startBackgroundTask() {
+                    this.resetUI();
+                    this.status = 'starting';
+
+                    try {
+                        console.log(`[UI] Creating Background Task: a=${this.a}, b=${this.b}`);
+
+                        // A. Create Task
+                        const res = await fetch(`/task?a=${this.a}&b=${this.b}&operation=add`, { method: 'POST' });
+                        const data = await res.json();
+                        
+                        console.log('[API] /task Created:', data);
+                        
+                        // Capture who STARTED the task
+                        this.startedBy = data.handled_by || 'Unknown';
+                        this.status = 'pending';
+                        
+                        // B. Start Polling
+                        this.poll(data.task_id);
+
+                    } catch (e) {
+                        console.error('[API] /task Creation Failed:', e);
+                        this.error = "Could not start task";
+                        this.status = 'failed';
+                        this.processing = false;
+                    }
+                },
+
+                async poll(taskId) {
+                    try {
+                        const res = await fetch(`/tasks/${taskId}/status`);
+                        const data = await res.json();
+
+                        console.log(`[API] Poll Status (${taskId}):`, data);
+
+                        // 1. ALWAYS update who checked it (The API Node)
+                        this.checkedBy = data.checked_by || 'Unknown';
+
+                        if (data.status === 'complete') {
+                            this.result = data.result;
+                            this.status = 'complete';
+                            
+                            // 2. ONLY update processedBy when finished (The Worker)
+                            this.processedBy = data.handled_by || 'Unknown';
+                            
+                            this.processing = false;
+                            console.log('[UI] Task Finished Successfully. Worker:', this.processedBy);
+                        } 
+                        else if (data.status === 'failed') {
+                            this.error = data.error;
+                            this.status = 'failed';
+                            this.processedBy = data.handled_by || 'Error Worker';
+                            this.processing = false;
+                            console.warn('[UI] Task Failed on Server');
+                        } 
+                        else {
+                            // Still pending...
+                            console.log(`[UI] Task pending. Checked by API Node: ${this.checkedBy}`);
+                            setTimeout(() => this.poll(taskId), 2000);
+                        }
+                    } catch (e) {
+                        console.error('[API] Polling Error:', e);
+                        this.error = "Polling Error";
+                        this.processing = false;
+                    }
+                }
+            }
         }
-    },
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body x-data="wizardApp()">
 
-    async checkIdentity() {
-        this.checkingIdentity = true;
-        try {
-            const res = await fetch('/whoami');
-            const data = await res.json();
-            this.serverId = data.container_id || data.handled_by || 'Unknown';
-            this.addLog('Node: ' + this.serverId);
-        } catch (e) { this.addLog('ID check failed', true); }
-        finally { this.checkingIdentity = false; }
-    },
-
-    async testValkey() {
-        this.testingValkey = true;
-        try {
-            const res = await fetch('/valkey_test');
-            const data = await res.json();
-            this.addLog('Valkey: ' + (data.status || 'OK'));
-        } catch (e) { this.addLog('Valkey failed', true); }
-        finally { this.testingValkey = false; }
-    }
-}" x-init="addLog('System Ready')">
-
-    <main class="container wizard-container">
-        <article>
-            <header><strong>Distributed Math Wizard 🧙</strong></header>
-            
-            <div class="input-group">
-                <input type="number" x-model.number="a" placeholder="a">
-                <span>+</span>
-                <input type="number" x-model.number="b" placeholder="b">
-            </div>
-            
-            <button @click="startCalculation()" :aria-busy="isLoading" :disabled="isLoading || a === null || b === null">
-                Calculate Sum
-            </button>
-
-            <footer id="display">
-                <div x-show="result !== null" x-cloak>
-                    <strong>Result:</strong> <span x-text="result" style="font-size: 1.5rem; color: #4caf50;"></span>
-                </div>
-                <div class="server-badge">
-                    <span><strong>Node:</strong> <code x-text="serverId"></code></span>
-                </div>
-            </footer>
-
-            <p x-show="errorMessage" x-cloak><mark x-text="errorMessage"></mark></p>
-        </article>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <button class="outline secondary" @click="checkIdentity()" :aria-busy="checkingIdentity">Whoami</button>
-            <button class="outline secondary" @click="testValkey()" :aria-busy="testingValkey">Valkey</button>
+    <main class="container">
+        <h2>🧙 Distributed Math Wizard</h2>
+        
+        <div class="grid">
+            <label>Value A <input type="number" x-model.number="a" placeholder="0"></label>
+            <label>Value B <input type="number" x-model.number="b" placeholder="0"></label>
         </div>
 
-        <div class="debug-console" x-show="logs.length > 0" x-cloak>
-            <template x-for="log in logs">
-                <div><small x-text="log.time" style="color:#555"></small> <span :style="log.isError ? 'color:red' : ''" x-text="log.msg"></span></div>
-            </template>
+        <div class="grid">
+            <button @click="directAdd()" :disabled="processing || !inputsValid">
+                ⚡ Direct Add
+            </button>
+            <button class="secondary" @click="startBackgroundTask()" :disabled="processing || !inputsValid">
+                ⏳ Start Background Task
+            </button>
+        </div>
+
+        <div x-show="message" class="result-box" x-cloak>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <strong>Output:</strong>
+                <span class="status-badge" x-text="status.toUpperCase()"></span>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                <div class="info-row">
+                    <span class="info-label">Initiated By:</span>
+                    <span class="node-id" x-text="startedBy"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Checked By:</span>
+                    <span class="node-id" x-text="checkedBy"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Processed By:</span>
+                    <span class="node-id" x-text="processedBy" style="font-weight:bold;"></span>
+                </div>
+            </div>
+
+            <progress x-show="status === 'pending'"></progress>
+
+            <h3 x-show="result !== null" style="color: #4caf50; text-align:center; margin: 10px 0;">
+                Sum: <span x-text="result"></span>
+            </h3>
+
+            <div x-show="error" style="color: #ff6b6b; text-align:center;" x-text="error"></div>
         </div>
     </main>
-
-    <!-- Moving Alpine to the end of body and adding defer to fix the initialization warning -->
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
