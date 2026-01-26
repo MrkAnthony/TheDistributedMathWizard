@@ -32,5 +32,5 @@ services:
     # EXPOSE tells other containers the port, but doesn't open it to your WSL
     expose:
       - "5000"
-    deploy:
-      replicas: 3
+    # deploy:
+    #   replicas: 3
