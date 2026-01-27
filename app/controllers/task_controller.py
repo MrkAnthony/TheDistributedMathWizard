@@ -19,21 +19,17 @@ def create_task_handler():
 def check_status_handler(task_id):
     task_data = get_task_status(task_id)
     status = task_data["status"]
-    
+
     response = {
         "status": status,
-        "checked_by": get_container_info()
+        "checked_by": task_data.get("checked_by", get_container_info())
     }
 
     if status == "complete":
         response["result"] = task_data["result"]
         response["handled_by"] = task_data.get("handled_by", "Unknown")
-        return jsonify(response), 200
-        
     elif status == "failed":
         response["error"] = task_data["result"]
         response["handled_by"] = task_data.get("handled_by", "Unknown")
-        return jsonify(response), 200
-        
-    else:
-        return jsonify(response), 200
+
+    return jsonify(response), 200
