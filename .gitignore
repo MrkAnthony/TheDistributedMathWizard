@@ -24,6 +24,7 @@ build/
 Thumbs.db
 
 # Certificates (don't commit real certs)
+secrets/
 *.pem
 *.key
 nginx/certs/
