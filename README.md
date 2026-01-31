@@ -1,143 +1,151 @@
-
 # 🧙 Distributed Math Wizard
 
-A distributed systems simulation demonstrating the evolution from synchronous API calls to a non-blocking, producer–consumer architecture using Valkey and multiprocessing.
-
----
+A distributed systems simulation demonstrating the evolution from synchronous API calls to a non-blocking, producer–consumer architecture using Valkey, multiprocessing, and secure tunneling.
 
 ## 🚀 Running the Project
 
-To build the containers and start the entire cluster, run:
+The project now supports two running modes: **Local Development** and **Public Production**.
+
+### 1. Developer Mode (Localhost)
+
+Best for testing code changes without internet exposure.
 
 ```bash
 docker compose up --build
-````
 
-* **Access the UI:** [http://localhost](http://localhost)
-* **Stop the cluster:** Press `Ctrl+C` or run `docker compose down`
+```
 
-> **Note:** Use `--build` whenever you modify the Python code to ensure containers reflect the latest changes.
+* **Access:** [http://localhost](https://www.google.com/search?q=http://localhost)
+* **Features:** HTTP (Port 80), 3 Workers, Valkey.
+
+### 2. Public Mode (Secure Tunnel)
+
+Launches the Cloudflare Tunnel to expose the app to the internet securely.
+
+```bash
+docker compose --profile public up --build
+
+```
+
+* **Access:** `https://math-wizard.shockcloud.win`
+* **Features:** HTTPS (Port 443), End-to-End Encryption, Zero Trust Access.
+
+> **Stop the cluster:** Press `Ctrl+C` or run `docker compose down`
 
 ---
 
 ## 🏗 Current Architecture (Distributed Phase)
 
-The system now operates as a **true distributed, asynchronous architecture** with shared state and background workers.
+The system operates as a **true distributed, asynchronous architecture** with shared state, load balancing, and secure ingress.
 
 ### Core Components
 
-* **Gateway:** Nginx (reverse proxy on port `80`)
-* **Application Nodes:** Flask (Python) on port `5000`
+* **Ingress / Security:**
+* **Cloudflare Tunnel:** `cloudflared` container (Sidecar) creating a secure outbound tunnel.
+* **Gateway:** Nginx (Reverse Proxy). Listens on **Port 443** (Internal SSL) and **Port 80**.
 
-  * Each container runs **two processes**:
 
-    * **API Process (Producer)** – handles HTTP requests
-    * **Worker Process (Consumer)** – performs background math
-* **Message Broker / State Store:** **Valkey (Redis-compatible)**
-* **Frontend:** Alpine.js + Pico.css (polling-based UI)
+* **Application Layer (Scaled):**
+* **Replica Count:** **3 Containers** (Round Robin Load Balanced).
+* **Process Model:** Each container runs:
+* **API Process (Producer):** Handles HTTP requests.
+* **Worker Process (Consumer):** Blocks on Valkey Queue for background math.
 
-### Symmetric Container Design
 
-Every `math_wizard` container is identical and self-sufficient:
 
-* Accepts API requests
-* Pushes jobs into Valkey
-* Runs a background worker that can process jobs from *any* container
 
-There are **no dedicated worker containers** — scaling the service scales both API capacity and worker throughput automatically.
+* **State Layer:**
+* **Valkey (Redis-compatible):** Single source of truth. No local memory is used for state.
 
----
 
-## 🔁 Request Lifecycle (Producer–Consumer Flow)
-
-1. **Task Creation**
-
-   * Client calls `POST /task`
-   * API generates a `task_id`
-   * Task metadata is stored in Valkey (`task:<uuid>`)
-   * Job payload is pushed to a Valkey queue (`LPUSH task_queue`)
-   * API immediately returns `202 Accepted`
-
-2. **Task Processing**
-
-   * A worker process (from any container) blocks on `BRPOP task_queue`
-   * When a job arrives, it performs the calculation
-   * Result and status are written back to Valkey
-   * Worker records its container ID as `handled_by`
-
-3. **Task Polling**
-
-   * Client polls `GET /tasks/<id>/status`
-   * Any API container can serve the request
-   * Response includes:
-
-     * `status`
-     * `checked_by` (API container ID)
-     * `handled_by` (worker container ID, once complete)
 
 ---
 
-## 🧬 Identity Tracking (3-Step Visibility)
+## 🔒 Security & Infrastructure (New)
 
-Each task exposes container-level observability:
+We have moved beyond simple port forwarding to a **Zero Trust** architecture:
 
-1. **Initiated By** – container that accepted the `POST /task`
-2. **Checked By** – container serving the status request
-3. **Handled By** – container whose worker completed the task
+1. **Cloudflare Tunnel (US-3.1):**
+* No open ports on the host router.
+* Traffic enters via a secure edge connection.
 
-This proves:
 
-* Load balancing works
-* Any node can process any job
-* State is fully decoupled from individual containers
+2. **Origin CA Encryption (US-3.2):**
+* Traffic between Cloudflare and Nginx is encrypted using a strict Origin CA Certificate.
+* Nginx verifies the certificate chain.
+
+
+3. **Zero Trust Access (US-3.3):**
+* Public access is protected by an identity policy (e.g., University Email required).
+
+
+
+---
+
+## 🔁 Request Lifecycle (The "Shared Brain")
+
+This system prevents "Split Brain" issues by enforcing a strict Producer-Consumer flow via Valkey:
+
+1. **Task Creation (Producer)**
+* Client calls `POST /task`.
+* Load Balancer routes to **Node A**.
+* Node A writes metadata to Valkey (`HSET task:<id>`) and pushes ID to Queue (`LPUSH task_queue`).
+* Node A returns `202 Accepted`.
+
+
+2. **Task Processing (Consumer)**
+* **Node B** (or C, or A) is waiting on `BRPOP task_queue`.
+* Node B pops the task and performs the calculation.
+* Node B writes the result to Valkey.
+
+
+3. **Task Polling (Observer)**
+* Client polls `GET /tasks/<id>/status`.
+* Load Balancer routes to **Node C**.
+* Node C reads the status from Valkey (Shared State).
+* **Result:** Any node can serve the status of a task created by any other node.
+
+
 
 ---
 
 ## 🛠 API Endpoints
 
-| Method | Endpoint             | Description                                            |
-| ------ | -------------------- | ------------------------------------------------------ |
-| `GET`  | `/`                  | Serves the UI dashboard                                |
-| `GET`  | `/whoami`            | Returns the current container ID                       |
-| `GET`  | `/add`               | **Sync:** Immediate calculation (blocking)             |
-| `POST` | `/task`              | **Async:** Enqueues background task, returns `task_id` |
-| `GET`  | `/tasks/<id>/status` | Returns task status, `checked_by`, and `handled_by`    |
-| `GET`  | `/valkey_test`       | Connectivity diagnostics for Valkey                    |
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/` | Serves the UI dashboard. |
+| `GET` | `/whoami` | Returns the current container ID. |
+| `GET` | `/add` | **Sync:** Immediate calculation (blocking). |
+| `POST` | `/task` | **Async:** Enqueues background task. Returns `task_id`. |
+| `GET` | `/tasks/<id>/status` | **Async:** Returns task status, `checked_by` (API ID), and `handled_by` (Worker ID). |
+| `GET` | `/valkey_test` | Connectivity diagnostics for Valkey. |
 
 ---
 
 ## ⚙️ Key Design Decisions
 
-* **Multiprocessing over threading**
+* **Horizontal Scaling:**
+* Running `replicas: 3` proves that state is fully externalized.
+* If one container dies, others pick up the work immediately.
 
-  * Avoids Python GIL
-  * CPU-bound math never blocks the API
 
-* **Blocking queue (`BRPOP`)**
+* **Multiprocessing over Threading:**
+* Avoids Python GIL. CPU-bound math never blocks the API.
 
-  * Zero CPU usage while idle
-  * Efficient worker behavior
 
-* **Externalized state**
+* **Blocking Queue (`BRPOP`):**
+* Zero CPU usage while idle. Instant reaction to new jobs.
 
-  * Task history survives container restarts
-  * Enables horizontal scaling
 
-* **No async framework required**
+* **Profile-Based Deployment:**
+* Uses Docker Compose Profiles to separate "Dev" and "Public" environments easily.
 
-  * Achieves non-blocking behavior using classic OS processes
+
 
 ---
 
 ## 🔮 Possible Extensions
 
-* Multiple worker processes per container
-* Retry / dead-letter queues
-* Graceful worker shutdown
-* Rate limiting / backpressure
-* Migration to Gunicorn or Kubernetes
-
----
-
-This project demonstrates how real production systems decouple request handling from execution using queues, shared state, and background workers — without relying on heavy frameworks.
-
+* [ ] **Rate Limiting:** Use Valkey to limit requests per IP.
+* [ ] **Dead Letter Queue:** Handle crashed tasks that never finish.
+* [ ] **Kubernetes Migration:** Move from Docker Compose to K8s.
