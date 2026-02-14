@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import multiprocessing
 import os
 from flask_limiter import Limiter
@@ -12,12 +12,22 @@ from app.controllers.valkey_controller import valkey_test_handler
 from app.services.worker_service import run_worker_process
 
 app = Flask(__name__)
+
+
 # Uses the same Valkey Instance but they will coexist
+def get_real_ip():
+    if request.headers.get('X-Forwarded-For'):
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    return request.remote_addr
+
+
 storage_uri = f"redis://{os.getenv('VALKEY_HOST', 'localhost')}:{os.getenv('VALKEY_PORT', '6379')}"
 limiter = Limiter(
-    get_remote_address,
+    get_real_ip,
     app=app,
-    storage_uri=storage_uri
+    storage_uri=storage_uri,
+    headers_enabled=True,
+    strategy="fixed-window"
 )
 
 _worker = None  # module-level so we don’t spawn multiple
@@ -68,7 +78,8 @@ def handle_unexpected_error(err):
 
 @app.errorhandler(429)
 def handle_too_many_request(e):
-    return "", 429
+    return jsonify({"error": "Too many requests"}), 429
+
 
 @app.route('/')
 def hello_world():
