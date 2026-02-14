@@ -55,12 +55,14 @@
           <collectionProp name="">
             <stringProp name="245914917">jp@gc - Active Threads Over Time</stringProp>
             <stringProp name="245914917">jp@gc - Active Threads Over Time</stringProp>
+            <stringProp name="245914917">jp@gc - Active Threads Over Time</stringProp>
             <stringProp name="-243013315">jp@gc - Response Times Over Time</stringProp>
             <stringProp name="-243013315">jp@gc - Response Times Over Time</stringProp>
           </collectionProp>
           <collectionProp name="">
             <stringProp name="-1734320467">Math Students - Wave 1</stringProp>
             <stringProp name="-1734320466">Math Students - Wave 2</stringProp>
+            <stringProp name="-1734320465">Math Students - Wave 3</stringProp>
             <stringProp name="-1169180310">End-to-End Math Job</stringProp>
             <stringProp name="-1549391110">Overall Response Times</stringProp>
           </collectionProp>
