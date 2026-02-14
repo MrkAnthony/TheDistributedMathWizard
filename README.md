@@ -149,3 +149,69 @@ This system prevents "Split Brain" issues by enforcing a strict Producer-Consume
 * [ ] **Rate Limiting:** Use Valkey to limit requests per IP.
 * [ ] **Dead Letter Queue:** Handle crashed tasks that never finish.
 * [ ] **Kubernetes Migration:** Move from Docker Compose to K8s.
+
+To update your **README.md** with the latest performance results and architectural safety measures, insert the following sections. This reflects your successful "Staircase" stress test and the implementation of the "Server Busy" circuit breaker.
+
+---
+
+## 📈 Performance & Stress Testing (Staircase Analysis)
+
+The system was subjected to a **3-Stage Rocket** load profile using JMeter to identify the architectural "Inflection Point"—the exact moment where demand exceeds worker capacity.
+
+### 1. The "Staircase" Test Strategy
+
+We simulated three waves of computational load against the 3-worker cluster:
+
+* **Wave 1 (Efficiency):** 3 concurrent users. Each task maps 1:1 to a worker container.
+* **Wave 2 (Saturation):** 6 concurrent users. Workers at 100% utilization; tasks begin to queue in Valkey.
+* **Wave 3 (Overload):** 12 concurrent users. Submission rate is double the processing throughput.
+
+### 2. Findings: Architectural Integrity
+
+The **Composite Graph** validates that our asynchronous architecture effectively protects the user experience:
+
+* **Math Latency (Blue Spike):** Remains stable through Wave 2 but spikes vertically during Wave 3 as the Valkey queue backs up.
+* **Casual UX Stability:** Despite background saturation, the decoupled API ensures "Casual Browsers" maintain sub-500ms response times.
+
+---
+
+## 🛡️ Stability & Fault Tolerance
+
+We implemented two critical "Safety Valves" to prevent system collapse during peak overload:
+
+### 1. Client-Side: Polling Timeout
+
+The test plan includes a **JSR223 Assertion** and a **Counter** to prevent infinite client-side loops.
+
+* **Logic:** If a task does not return a `COMPLETED` status within 10 polling attempts, the client aborts and signals a "Server Busy" state.
+* **Benefit:** Reduces unnecessary network traffic and "zombie" polling.
+
+### 2. Server-Side: Circuit Breaker
+
+The `task_controller.py` implements a fast-fail mechanism to protect the Valkey state layer.
+
+* **Action:** If the `task_queue` length exceeds a threshold (e.g., 20 jobs), the API rejects new submissions with a `503 Service Unavailable` error.
+* **Standard:** Prevents memory exhaustion and ensures the system remains responsive for status checks of existing tasks.
+
+---
+
+## 📁 Project Structure (Updated)
+
+```text
+THE DISTRIBUTED MATH WIZARD
+├── app/
+│   ├── controllers/
+│   │   ├── task_controller.py   # Circuit breaker logic
+│   │   └── valkey_controller.py # Shared state observer
+│   ├── services/
+│   │   ├── adder_service.py     # CPU-bound logic
+│   │   └── worker_service.py    # Background consumer
+│   └── app.py                   # Flask entry point
+├── nginx/                       # Load balancing & SSL
+├── wizards_test.jmx             # Automated staircase test plan
+├── jtestresults.png             # Stress test visualization
+└── docker-compose.yml           # Multi-node orchestration
+
+```
+
+**Would you like me to help you refine the "Possible Extensions" section now that the horizontal scaling and performance baselines are established?**
