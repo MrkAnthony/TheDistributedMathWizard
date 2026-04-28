@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distributed Math Wizard Poster</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --fiu-blue: #003366;
+        --fiu-gold: #B6862C;
+        --bg-color: #F4F4F4;
+        --text-color: #333;
+        --section-header-bg: var(--fiu-blue);
+        --section-header-text: #fff;
+    }
+
+    body {
+        font-family: 'Roboto', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        margin: 0;
+        padding: 20px;
+        line-height: 1.5;
+    }
+
+    .poster-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        background-color: #fff;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        padding: 30px;
+    }
+
+    header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 4px solid var(--fiu-gold);
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+    }
+
+    .header-content {
+        text-align: center;
+        flex-grow: 1;
+    }
+
+    h1 {
+        color: var(--fiu-blue);
+        font-size: 3em;
+        margin: 0 0 10px 0;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+
+    h2 {
+        color: var(--text-color);
+        font-size: 1.8em;
+        margin: 5px 0;
+        font-weight: 400;
+    }
+
+    .team-names {
+        font-weight: 700;
+        color: var(--fiu-blue);
+    }
+
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 30px;
+    }
+
+    .section {
+        background-color: #fff;
+        margin-bottom: 25px;
+        border: 1px solid #ddd;
+    }
+
+    .section-header {
+        background-color: var(--section-header-bg);
+        color: var(--section-header-text);
+        padding: 10px 15px;
+        font-size: 1.4em;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .section-body {
+        padding: 20px;
+    }
+
+    .section-body p {
+        margin-bottom: 15px;
+        font-size: 1.1em;
+    }
+
+    .section-body p:last-child {
+        margin-bottom: 0;
+    }
+
+    .image-container {
+        text-align: center;
+        margin-bottom: 15px;
+    }
+
+    .image-container img {
+        max-width: 100%;
+        height: auto;
+        border: 2px solid var(--fiu-blue);
+    }
+
+    .image-caption {
+        font-size: 0.95em;
+        font-style: italic;
+        color: var(--text-color);
+        margin-top: 8px;
+    }
+
+    .references p {
+        font-size: 0.9em;
+    }
+
+    .fiu-logo {
+        height: 120px;
+        width: auto;
+    }
+
+    /* For diagram placeholder */
+    .diagram-placeholder {
+        background-color: #f9f9f9;
+        border: 2px dashed #ccc;
+        height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        font-style: italic;
+    }
+</style>
+</head>
+<body>
+
+<div class="poster-container">
+    <header>
+        <img src="https://brand.fiu.edu/_assets/images/fiu-primary-acronym-logo.png" alt="FIU Logo" class="fiu-logo">
+        <div class="header-content">
+            <h1>Distributed Math Wizard: A Resilient Asynchronous System</h1>
+            <h2>Team: <span class="team-names">Nicole Sanchez, Rayhan Marrero Ramirez, Mark-Antony Delva</span></h2>
+        </div>
+    </header>
+
+    <div class="main-grid">
+        <!-- Column 1 -->
+        <div class="column">
+            <div class="section">
+                <div class="section-header">Abstract</div>
+                <div class="section-body">
+                    <p>A distributed system simulation comparing synchronous vs. asynchronous architectures. Demonstrates how a non-blocking, producer-consumer model using Valkey and multiprocessing maintains user responsiveness under heavy load, unlike traditional blocking APIs.</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">Problem Statement</div>
+                <div class="section-body">
+                    <p>Synchronous API calls block the server until completion, leading to poor user experience and timeouts during high demand or long-running tasks.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 2 -->
+        <div class="column">
+            <div class="section">
+                <div class="section-header">Architecture & Methodology</div>
+                <div class="section-body">
+                    <div class="image-container">
+                        <img src="./architecture.png" alt="Distributed Math Wizard Architecture Diagram">
+                        <div class="image-caption">Fig 1: System Architecture Diagram - Shows the flow from client to API, Valkey queue, and workers.</div>
+                    </div>
+                    <p>The system uses a decoupled architecture. The API accepts tasks, pushes them to a Valkey queue, and returns immediately. Background workers process tasks from the queue, updating the shared state. Secure access is provided via Cloudflare Zero Trust.</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">User Interface</div>
+                <div class="section-body">
+                    <div class="image-container">
+                        <img src="./interface.png" alt="Distributed Math Wizard Interface">
+                        <div class="image-caption">Fig 1: Distributed Math Wizard Interface - Users submit tasks here.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column 3 -->
+        <div class="column">
+            <div class="section">
+                <div class="section-header">Results & Testing</div>
+                <div class="section-body">
+                    <div class="image-container">
+                        <img src="jtestresults.png" alt="JMeter Staircase Stress Test Results">
+                        <div class="image-caption">Fig 2: JMeter Staircase Stress Test Results - Shows stable UI latency (blue) despite background task overload (purple spikes).</div>
+                    </div>
+                    <p>A 3-stage "staircase" load test revealed the system's inflection point. Even when the 3-worker cluster was saturated with 12 concurrent math tasks (purple spikes), the response time for casual users remained low and stable (blue line), proving architectural resilience.</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">Conclusion & Future Work</div>
+                <div class="section-body">
+                    <p>The asynchronous, distributed approach successfully decouples long-running computations from the user interface, ensuring a responsive experience. Future extensions include implementing rate limiting, a dead letter queue for failed tasks, and migration to Kubernetes for enhanced scalability.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
